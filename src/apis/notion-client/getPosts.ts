@@ -32,21 +32,16 @@ export const getPosts = async () => {
   } else {
     // Construct Data
     const pageIds = getAllPageIds(response)
-    const tempBlock = await (await api.getBlocks(pageIds)).recordMap.block
-
     const data = []
     for (let i = 0; i < pageIds.length; i++) {
       const id = pageIds[i]
-      const properties =
-        (await getPageProperties(id, tempBlock, schema)) || null
-      if (!tempBlock[id]) continue
-
+      const properties = (await getPageProperties(id, block, schema)) || null
       // Add fullwidth, createdtime to properties
       properties.createdTime = new Date(
-        tempBlock[id].value?.created_time
+        block[id].value?.created_time
       ).toString()
       properties.fullWidth =
-        (tempBlock[id].value?.format as any)?.page_full_width ?? false
+        (block[id].value?.format as any)?.page_full_width ?? false
 
       data.push(properties)
     }

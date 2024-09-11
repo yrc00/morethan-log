@@ -16,6 +16,7 @@ export const getPosts = async (): Promise<TPosts> => {
     let id = CONFIG.notionConfig.pageId as string;
     const api = new NotionAPI();
 
+    // Notion API에서 페이지 데이터를 가져옵니다.
     const response = await api.getPage(id);
     
     if (!response) {
@@ -23,15 +24,23 @@ export const getPosts = async (): Promise<TPosts> => {
     }
 
     id = idToUuid(id);
-    const collection = Object.values(response.collection || {})[0]?.value;
-    const block = response.block;
-    const schema = collection?.schema;
 
-    if (!block || !block[id]) {
-      throw new Error("Block not found in Notion response");
+    // collection과 block 데이터가 있는지 확인합니다.
+    const collection = Object.values(response.collection || {})[0]?.value;
+    const block = response.block || {};
+
+    // schema가 없으면 빈 배열 반환
+    const schema = collection?.schema;
+    if (!schema) {
+      console.warn("No schema found in Notion collection");
+      return [];
     }
 
-    const rawMetadata = block[id].value;
+    if (!block[id]) {
+      throw new Error(`Block with id ${id} not found`);
+    }
+
+    const rawMetadata = block[id]?.value;
 
     // Check Type
     if (
@@ -41,26 +50,26 @@ export const getPosts = async (): Promise<TPosts> => {
       return [];
     }
 
-    // Get all page IDs
+    // 페이지 ID를 가져옵니다.
     const pageIds = getAllPageIds(response);
     const data = [];
 
     for (let i = 0; i < pageIds.length; i++) {
       const pageId = pageIds[i];
 
-      // Fetch page properties, fallback to null if not found
+      // 페이지 속성을 가져오고, 없으면 null로 설정합니다.
       const properties = (await getPageProperties(pageId, block, schema)) || null;
 
       if (properties) {
-        // Add created time and fullwidth properties
-        properties.createdTime = new Date(block[pageId].value?.created_time || 0).toString();
-        properties.fullWidth = (block[pageId].value?.format as any)?.page_full_width ?? false;
+        // created_time 및 fullWidth 속성을 추가합니다.
+        properties.createdTime = new Date(block[pageId]?.value?.created_time || 0).toString();
+        properties.fullWidth = (block[pageId]?.value?.format as any)?.page_full_width ?? false;
 
         data.push(properties);
       }
     }
 
-    // Sort data by date
+    // 데이터를 생성일 기준으로 정렬합니다.
     data.sort((a: any, b: any) => {
       const dateA = new Date(a?.date?.start_date || a.createdTime).getTime();
       const dateB = new Date(b?.date?.start_date || b.createdTime).getTime();
